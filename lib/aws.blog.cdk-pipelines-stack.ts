@@ -1,8 +1,8 @@
 import {Repository} from "@aws-cdk/aws-codecommit";
 import {Artifact} from "@aws-cdk/aws-codepipeline";
 import {CdkPipeline, ShellScriptAction, SimpleSynthAction} from "@aws-cdk/pipelines";
-import {CodeCommitSourceAction, ManualApprovalAction} from "@aws-cdk/aws-codepipeline-actions";
-import {CfnOutput, Construct, Stack, StackProps, Stage, StageProps} from "@aws-cdk/core";
+import * as codepipeline_actions from "@aws-cdk/aws-codepipeline-actions";
+import {CfnOutput, Construct, SecretValue, Stack, StackProps, Stage, StageProps} from "@aws-cdk/core";
 import {AwsBlogLambdaStack} from "./aws.blog-lambda-stack";
 
 
@@ -16,13 +16,9 @@ export class AwsBlogApplicationStage extends Stage {
   }
 }
 
-
 export class AwsBlogCdkPipelinesStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
-
-    const repoName = "aws.blog.cdk-pipelines";	// Change this to the name of your repo
-    const repo = Repository.fromRepositoryName(this, 'ImportedRepo', repoName);
+    super(scope, id, props);        
 
     const sourceArtifact = new Artifact();
     const cloudAssemblyArtifact = new Artifact();
@@ -31,13 +27,21 @@ export class AwsBlogCdkPipelinesStack extends Stack {
       pipelineName: 'AwsBlogCdkPipeline',
       cloudAssemblyArtifact,
 
-      // Here we use CodeCommit instead of Github
-      sourceAction: new CodeCommitSourceAction({
-        actionName: 'CodeCommit_Source',
-        repository: repo,
-        branch: 'main',
-        output: sourceArtifact
+      sourceAction: new codepipeline_actions.GitHubSourceAction({
+        actionName: 'Source_GitHub',
+        output: sourceArtifact,
+        oauthToken: SecretValue.secretsManager('infra/github-token'),
+        owner: 'fredfgb',
+        repo: 'aws.blog.cdk-pipelines',
+        branch: 'main'              
       }),
+      // Here we use CodeCommit instead of Github
+      // sourceAction: new CodeCommitSourceAction({
+      //   actionName: 'CodeCommit_Source',
+      //   repository: repo,
+      //   branch: 'main',
+      //   output: sourceArtifact
+      // }),
 
       synthAction: SimpleSynthAction.standardNpmSynth({
         sourceArtifact,
